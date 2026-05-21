@@ -1,4 +1,4 @@
-.PHONY: help install install-serveurapp install-db configure-env setup-config dev prod build start stop restart clean logs test docker-build docker-push deploy
+.PHONY: help install install-serveurapp install-db configure-env setup-config setup-wizard dev prod build start stop restart clean logs test docker-build docker-push deploy
 
 # Variables
 BACKEND_DIR := backend
@@ -21,6 +21,7 @@ help:
 	@echo "$(BLUE)╚════════════════════════════════════════════╝$(NC)"
 	@echo ""
 	@echo "$(YELLOW)Setup & Installation:$(NC)"
+	@echo "  make setup-wizard         - Configuration complète interactive (RECOMMANDÉ)"
 	@echo "  make install              - Install all dependencies"
 	@echo "  make install-serveurapp   - Install server backend dependencies"
 	@echo "  make configure-env        - Configure environment variables (.env)"
@@ -64,6 +65,10 @@ help:
 # ============================================================================
 # SETUP & INSTALLATION
 # ============================================================================
+
+setup-wizard:
+	@echo "$(BLUE)Lancement de la configuration interactive...$(NC)"
+	node setup-interactive.js
 
 install: install-backend install-frontend
 	@echo "$(GREEN)✓ All dependencies installed!$(NC)"
