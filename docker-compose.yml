@@ -1,0 +1,181 @@
+version: '3.8'
+
+services:
+  # ============================================================================
+  # Backend API
+  # ============================================================================
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ephemeral-labs-api
+    ports:
+      - "${API_PORT:-3001}:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - DB_PATH=/data/labs.db
+      - PROXMOX_HOST=${PROXMOX_HOST:-starfleet.lan}
+      - PROXMOX_TOKEN=${PROXMOX_TOKEN}
+      - PROXMOX_NODE=${PROXMOX_NODE:-pve}
+      - PROXMOX_STORAGE=${PROXMOX_STORAGE:-local-lvm}
+      - LOG_LEVEL=info
+    volumes:
+      - api_data:/data
+      - ./backend/logs:/app/logs
+    depends_on:
+      - redis
+    networks:
+      - ephemeral-labs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ============================================================================
+  # Frontend (React)
+  # ============================================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - REACT_APP_API_BASE=http://${FRONTEND_HOST:-localhost}:3001
+    container_name: ephemeral-labs-frontend
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      - api
+    networks:
+      - ephemeral-labs
+    restart: unless-stopped
+
+  # ============================================================================
+  # Redis (Cache & Session Storage)
+  # ============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: ephemeral-labs-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - ephemeral-labs
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
+  # ============================================================================
+  # Nginx (Reverse Proxy)
+  # ============================================================================
+  nginx:
+    image: nginx:alpine
+    container_name: ephemeral-labs-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - api
+      - frontend
+    networks:
+      - ephemeral-labs
+    restart: unless-stopped
+
+  # ============================================================================
+  # PostgreSQL (Optional - for advanced features)
+  # ============================================================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: ephemeral-labs-postgres
+    environment:
+      - POSTGRES_DB=ephemeral_labs
+      - POSTGRES_USER=${DB_USER:-admin}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-change-me}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - ephemeral-labs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-admin}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================================
+  # Cleanup Scheduler (Cron-like service)
+  # ============================================================================
+  scheduler:
+    build:
+      context: ./scheduler
+      dockerfile: Dockerfile
+    container_name: ephemeral-labs-scheduler
+    environment:
+      - API_BASE=http://api:3001
+      - ADMIN_TOKEN=${ADMIN_TOKEN}
+      - CLEANUP_INTERVAL=300
+      - LOG_LEVEL=info
+    depends_on:
+      - api
+    networks:
+      - ephemeral-labs
+    restart: unless-stopped
+    volumes:
+      - ./scheduler/logs:/app/logs
+
+  # ============================================================================
+  # Monitoring (Prometheus)
+  # ============================================================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ephemeral-labs-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - ephemeral-labs
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+
+  # ============================================================================
+  # Grafana (Monitoring Dashboard)
+  # ============================================================================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ephemeral-labs-grafana
+    ports:
+      - "3002:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_INSTALL_PLUGINS=redis-datasource
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    networks:
+      - ephemeral-labs
+    restart: unless-stopped
+
+volumes:
+  api_data:
+  redis_data:
+  postgres_data:
+  prometheus_data:
+  grafana_data:
+  nginx_logs:
+
+networks:
+  ephemeral-labs:
+    driver: bridge
