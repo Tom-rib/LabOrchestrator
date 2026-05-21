@@ -1,4 +1,4 @@
-.PHONY: help install dev prod build start stop restart clean logs test docker-build docker-push deploy
+.PHONY: help install install-serveurapp dev prod build start stop restart clean logs test docker-build docker-push deploy
 
 # Variables
 BACKEND_DIR := backend
@@ -21,8 +21,9 @@ help:
 	@echo "$(BLUE)╚════════════════════════════════════════════╝$(NC)"
 	@echo ""
 	@echo "$(YELLOW)Setup & Installation:$(NC)"
-	@echo "  make install          - Install all dependencies"
-	@echo "  make setup            - Full setup (install + db init)"
+	@echo "  make install              - Install all dependencies"
+	@echo "  make install-serveurapp   - Install server backend dependencies"
+	@echo "  make setup                - Full setup (install + db init)"
 	@echo ""
 	@echo "$(YELLOW)Development:$(NC)"
 	@echo "  make dev              - Start in development mode"
@@ -63,6 +64,11 @@ help:
 
 install: install-backend install-frontend
 	@echo "$(GREEN)✓ All dependencies installed!$(NC)"
+
+install-serveurapp:
+	@echo "$(BLUE)Installing server backend dependencies...$(NC)"
+	cd $(BACKEND_DIR) && npm install
+	@echo "$(GREEN)✓ Server backend dependencies installed!$(NC)"
 
 install-backend:
 	@echo "$(BLUE)Installing backend dependencies...$(NC)"
