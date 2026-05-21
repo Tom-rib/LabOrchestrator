@@ -1,4 +1,4 @@
-.PHONY: help install install-serveurapp dev prod build start stop restart clean logs test docker-build docker-push deploy
+.PHONY: help install install-serveurapp install-db configure-env setup-config dev prod build start stop restart clean logs test docker-build docker-push deploy
 
 # Variables
 BACKEND_DIR := backend
@@ -23,7 +23,9 @@ help:
 	@echo "$(YELLOW)Setup & Installation:$(NC)"
 	@echo "  make install              - Install all dependencies"
 	@echo "  make install-serveurapp   - Install server backend dependencies"
-	@echo "  make setup                - Full setup (install + db init)"
+	@echo "  make configure-env        - Configure environment variables (.env)"
+	@echo "  make setup-config         - Full config setup (install + configure-env)"
+	@echo "  make setup                - Full setup (install + configure-env + db init)"
 	@echo ""
 	@echo "$(YELLOW)Development:$(NC)"
 	@echo "  make dev              - Start in development mode"
@@ -38,6 +40,7 @@ help:
 	@echo "  make restart          - Restart Docker containers"
 	@echo ""
 	@echo "$(YELLOW)Database:$(NC)"
+	@echo "  make install-db       - Initialize and seed database"
 	@echo "  make db-init          - Initialize database"
 	@echo "  make db-seed          - Seed database with demo data"
 	@echo "  make db-reset         - Reset database (⚠️ deletes all data)"
@@ -70,6 +73,13 @@ install-serveurapp:
 	cd $(BACKEND_DIR) && npm install
 	@echo "$(GREEN)✓ Server backend dependencies installed!$(NC)"
 
+configure-env:
+	@echo "$(BLUE)Setting up environment configuration...$(NC)"
+	cd $(BACKEND_DIR) && node setup-env.js
+
+setup-config: install-serveurapp configure-env
+	@echo "$(GREEN)✓ Configuration complete!$(NC)"
+
 install-backend:
 	@echo "$(BLUE)Installing backend dependencies...$(NC)"
 	cd $(BACKEND_DIR) && npm install
@@ -80,10 +90,9 @@ install-frontend:
 	cd $(FRONTEND_DIR) && npm install
 	@echo "$(GREEN)✓ Frontend dependencies installed$(NC)"
 
-setup: install db-init
+setup: install configure-env install-db
 	@echo "$(GREEN)✓ Setup complete!$(NC)"
 	@echo "$(YELLOW)Next steps:$(NC)"
-	@echo "  - Configure .env files"
 	@echo "  - Run: make dev (for development)"
 	@echo "  - Or: make prod (for production)"
 
@@ -140,6 +149,10 @@ restart: stop start
 # ============================================================================
 # DATABASE
 # ============================================================================
+
+install-db: db-init db-seed
+	@echo "$(GREEN)✓ Database initialized and seeded with demo data!$(NC)"
+	@echo "  Demo user: admin / admin123"
 
 db-init:
 	@echo "$(BLUE)Initializing database...$(NC)"
