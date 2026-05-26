@@ -162,7 +162,7 @@ install-db: db-init db-seed
 db-init:
 	@echo "$(BLUE)Initializing database...$(NC)"
 	@mkdir -p data
-	cd $(BACKEND_DIR) && node init-db.js
+	cd . && node $(BACKEND_DIR)/init-db.js
 	@echo "$(GREEN)✓ Database initialized!$(NC)"
 
 db-seed:

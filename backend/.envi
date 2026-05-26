@@ -1,0 +1,9 @@
+PORT=8006
+DB_PATH=./data/labs.db
+JWT_SECRET=5d704e2c0dd5d768b8bffa0d62fb5f0c77b982670893b1cd3808c273ec6ad87e
+PROXMOX_HOST=pve.localdomain
+PROXMOX_TOKEN=PVEAPIToken=root@pam!ephemeral-labs=ecefd951-253b-4679-adf4-93834249b2bb
+PROXMOX_NODE=pve
+PROXMOX_STORAGE=pve-data
+PROXMOX_MODE=mock
+NODE_ENV=production
